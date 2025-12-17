@@ -6,53 +6,186 @@
 
 In this project, students will first build a **Convolutional Neural Network (CNN)** model from scratch to classify images from a given dataset into predefined categories. Then, they will implement a **transfer learning approach** using a pre-trained model. Finally, students will **compare the performance** of the custom CNN and the transfer learning model based on evaluation metrics and analysis.
 
+## Project Overview
+
+This project systematically explores CNN architectures for CIFAR-10 image classification, progressing from simple 5-layer networks to advanced transfer learning with EfficientNetV2B0. The final optimized model achieves **93.97% test accuracy**, demonstrating a +6.27% improvement over custom ResNet-20 architecture.
+
+**Author:** Julia Parnis 
+**Date:** December 2025  
+**Framework:** TensorFlow/Keras
+
+---
+
 ## Dataset
 
-The dataset for this task is the CIFAR-10 dataset, which consists of 60,000 32x32 color images in 10 classes, with 6,000 images per class. You can download the dataset from [here](https://www.cs.toronto.edu/~kriz/cifar.html).
+**CIFAR-10** consists of 60,000 32×32 color images across 10 classes:
+- **Training set:** 50,000 images (40,000 training + 10,000 validation after split)
+- **Test set:** 10,000 images
+- **Classes:** airplane, automobile, bird, cat, deer, dog, frog, horse, ship, truck
+
+Dataset loaded directly from `tf.keras.datasets.cifar10`.
+
+---
+
+## Project Structure
+project/
+├── image_classification_project_JP.ipynb # Main notebook with all experiments
+├── requirements.txt # Python dependencies
+├── Image_classification_CNN.pptx # Power Point presentation of the project
+├── models/ # Saved model files
+│ ├── resnet20_model.h5 # ResNet-20 (1 MB)
+│ ├── vgg10_optimized_model.h5 # VGG-10 optimized (not included)
+│ └── efficientnetv2_224_model.h5 # Final transfer model (large)
+└── README.md # This file
 
 
-## Assessment Components
+---
 
-1.  **Data Preprocessing**
-    
-    *   Data loading and preprocessing (e.g., normalization, resizing, augmentation).
-    *   Create visualizations of some images, and labels.
-2.  **Model Architecture**
-    
-    *   Design a CNN architecture suitable for image classification.
-    *   Include convolutional layers, pooling layers, and fully connected layers.
-3.  **Model Training**
-    
-    *   Train the CNN model using appropriate optimization techniques (e.g., stochastic gradient descent, Adam).
-    *   Utilize techniques such as early stopping to prevent overfitting.
-4.  **Model Evaluation**
-    
-    *   Evaluate the trained model on a separate validation set.
-    *   Compute and report metrics such as accuracy, precision, recall, and F1-score.
-    *   Visualize the confusion matrix to understand model performance across different classes.
-5.  **Transfer Learning**
-    
-    *   Perform transfer learning with your chosen pre-trained models i.e., you will probably try a few and choose the best one (e.g., VGG16, Inception, ResNet trained on ImageNet)  
-        *   You may find this [link](https://www.tensorflow.org/tutorials/images/transfer_learning_with_hub) helpful.
-        *   [This](https://pytorch.org/tutorials/beginner/transfer_learning_tutorial.html) is the Pytorch version.
-    *   Train and evaluate the transfer learning model.
-    *   Compare its performance against your custom CNN.
-    *   Discuss advantages and trade-offs of using transfer learning over building a model from scratch.
-        
-6.  **Code Quality**
-    
-    *   Well-structured and commented code.
+## Methodology
 
-## Submission Details
+### Step 1: Data Exploration
+- Visualized sample images from each class
+- Analyzed class distribution (balanced: 6,000 images per class)
+- Examined image properties and pixel value distributions
 
-*   Deadline for submission: end of the week or as communicated by your teaching team.
-*   Submit the following:
-    1.  Python code files (`*.py`, `ipynb`) containing the model implementation and training process.
-    2.  Any additional files necessary for reproducing the results (e.g., requirements.txt, README.md).
-    3.  PPT presentation
+### Step 2: Data Preprocessing
+- Images were normalized for all the models by dividing by 255, but kept in original [0, 255] range for EfficientNet compatibility
+- Data augmentation applied: rotation (15°), horizontal flip, zoom (10%), width/height shifts (10%)
+- 80/20 train-validation split using `ImageDataGenerator`
 
-## Additional Notes
+### Step 3: Custom CNN Models
 
-*   Students are encourage to experiment with different architectures, hyper-parameters, and optimization techniques.
-*   Provide guidance and resources for troubleshooting common issues during model training and evaluation.
-*   Students will discuss their approaches and findings in class during assessment evaluation sessions.
+**3.1 Simple 5-Layer CNN**
+- Architecture: Conv→MaxPool→Conv→MaxPool→Dense
+- Parameters: 316K
+- Result: 67.5% accuracy (severe overfitting)
+
+**3.2 VGG-10 Model**
+- Architecture: 3×(Conv→Conv→MaxPool)→Dense
+- Parameters: ~2M
+- Iterations tested: baseline, + callbacks, + data augmentation
+- Best result: 82.1% accuracy with data augmentation
+
+**3.3 ResNet-20 Model**
+- Architecture: Conv→9×(ResidualBlock)→GlobalAvgPool→Dense
+- Parameters: 275K (most efficient)
+- Features: Residual connections, batch normalization
+- Result: **87.7% accuracy** with +3.1% overfitting gap
+
+### Step 4: Transfer Learning
+
+**4.1 Initial Transfer Model (EfficientNetV2B0)**
+- Input resolution: 96×96
+- Training: Two-phase (30+30 epochs)
+- Dropout: 0.3
+- Result: 90.4% accuracy
+
+**4.2 Optimized Transfer Model (EfficientNetV2B0)**
+- Input resolution: 224×224 (native)
+- Training: Two-phase (40+40 epochs)
+- Dropout: 0.2
+- Fine-tuned layers: 50 (last 25%)
+- Result: **93.97% accuracy** with near-zero overfitting (-0.01%)
+
+---
+
+## Results Summary
+
+| Model                        | Test Accuracy | Test Loss | Overfitting Gap | Parameters                 |
+|------------------------------|---------------|-----------|-----------------|----------------------------|
+| 5-Layer CNN                  | 67.47%        | 1.104     | +17.8%          | 316K                       |
+| VGG-10 (optimized)           | 82.08%        | 0.543     | -1.8%           | ~2M                        |
+| ResNet-20                    | 87.70%        | 0.389     | +3.1%           | 275K                       |
+| EfficientNetV2 (96×96)       | 90.42%        | 0.275     | -4.5%           | 6.26M (334K trainable)     |
+| **EfficientNetV2 (224×224)** | **93.97%**    | **0.174** | **-0.01%**      | **6.26M (334K trainable)** |
+
+### Key Findings
+**Impact Analysis:**
+1. **Architecture Design (5-Layer → VGG-10):** +14.61% - Largest single improvement
+2. **Residual Connections (VGG-10 → ResNet-20):** +5.62% - Enabled deeper, more efficient training
+3. **Input Resolution (96×96 → 224×224):** +3.55% - Critical for transfer learning
+4. **Transfer Learning (ResNet-20 → EfficientNet):** +2.72% - Pre-trained features advantage
+
+**Overall Progression:**
+- Simple CNN (67.5%) → VGG-10 (82.1%) → ResNet-20 (87.7%) → Transfer Learning (93.97%)
+- Total improvement: **+26.5 percentage points**
+
+---
+
+## Requirements
+
+See `requirements.txt` for complete dependencies. Key packages:
+- TensorFlow 2.15+
+- NumPy
+- Matplotlib
+- scikit-learn
+
+---
+
+## How to Run
+
+### 1. Install Dependencies
+pip install -r requirements.txt
+
+
+### 2. Run Notebook
+jupyter notebook image_classification_project_JP.ipynb
+
+
+### 3. Hardware Requirements
+- **Recommended:** GPU (NVIDIA A100 or similar)
+- **RAM:** 12GB+ (High RAM recommended for 224×224 training)
+- **Training time:** 
+  - Simple models: 5-30 minutes
+  - ResNet-20: ~40-50 minutes
+  - Transfer learning: ~30-50 minutes (depends on resolution)
+
+---
+
+## Model Files
+
+Due to file size limitations:
+-  **Included:** ResNet-20 (1 MB)
+-  **Not included:** EfficientNetV2 models (~40 MB each - exceeds GitHub limits),  VGG-10 optimized
+-  **To reproduce:** Run notebook cells - models will be trained and saved locally
+
+---
+
+## Evaluation Metrics
+
+All models evaluated using:
+- Accuracy, Loss, overfitting gap
+- Training curves (accuracy and loss over epochs)
+
+In addition, optimized ResNet and optimized EfficientNet models are also evaluated using:
+- Accuracy, Precision, Recall, F1-Score
+- Confusion Matrix
+- Per-class accuracy analysis
+- Calibration plots (confidence vs actual accuracy)
+- Mismatched images
+
+---
+
+## Conclusions
+
+Transfer learning with EfficientNetV2B0 achieved 93.97% accuracy, significantly outperforming custom architectures. Key success factors:
+1. Using pre-trained model at native resolution (224×224)
+2. Two-phase training (feature extraction → fine-tuning)
+3. Systematic hyperparameter optimization (dropout, epochs, fine-tuned layers)
+
+The results validate that properly optimized transfer learning surpasses even well-designed custom architectures (ResNet-20) trained from scratch.
+
+---
+
+## References
+
+- CIFAR-10 Dataset: https://www.cs.toronto.edu/~kriz/cifar.html
+- EfficientNetV2: https://arxiv.org/abs/2104.00298
+- TensorFlow Transfer Learning Guide: https://www.tensorflow.org/tutorials/images/transfer_learning
+
+---
+
+## License
+
+This project is for educational purposes as part of Ironhack's Data Analytics bootcamp.
+
