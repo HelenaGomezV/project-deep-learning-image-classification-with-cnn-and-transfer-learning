@@ -1,0 +1,12 @@
+# Jupyter
+.ipynb_checkpoints/
+
+# Python
+__pycache__/
+
+# Trained models
+*.h5
+*.keras
+
+# Data
+data/
